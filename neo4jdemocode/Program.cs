@@ -11,7 +11,7 @@ namespace neo4j.factsheetcode
     {
         static void Main(string[] args)
         {
- //#######           CreateActorPlayingInMovie();
+            CreateActorPlayingInMovie();
             FindMovieByTitle();
         }
 
@@ -20,11 +20,14 @@ namespace neo4j.factsheetcode
             var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
             client.Connect();
 
-            var actor = client.Create(new Actor { Name = "Keanu Reeves" });
             var movie = client.Create(new Movie { Title = "The Matrix" });
-            var relationship = client.CreateRelationship(actor, new ActedIn(movie) { Role = "Neo"});
+
+            // Create actor and its relationship with the movie in one go, so there is only one access to the database
+            var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
 
             // Also add relationship to root node, so we can find movies without going through other nodes
+            //TODO: this is inefficient (another call to the db). But I can't add this to the create (movie doesn't yet exist when I call client.Create)
+            //TODO: understand this gets created automatically, but that didn't work for me. Confused.
             client.CreateRelationship(client.RootNode, new HasMovie(movie));
         }
 
@@ -83,17 +86,6 @@ namespace neo4j.factsheetcode
             var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
             client.Connect();
 
-            //doesn't work
-            //var movies = client
-            //            .Cypher
-            //            .Start(new { root = client.RootNode })
-            //            .Match("root-[:HAS_MOVIE]->movie")
-            //            .Where((Movie movie) => movie.Title == "{title}")
-            //            .WithParam("title", "The Matrix")
-            //            .Return<Node<Movie>>("movie")
-            //            .Results;
-
-            //works - not using parameters
             var movies = client
                         .Cypher
                         .Start(new { root = client.RootNode })
@@ -101,16 +93,6 @@ namespace neo4j.factsheetcode
                         .Where((Movie movie) => movie.Title == "The Matrix")
                         .Return<Node<Movie>>("movie")
                         .Results;
-
-            // Results factored out to be able to see the query itself
-            //var movies = client
-            //            .Cypher
-            //            .Start(new { root = client.RootNode })
-            //            .Match("root-[:HAS_MOVIE]->movie")
-            //            .WithParam("title", "The Matrix")
-            //            .Where((Movie movie) => movie.Title == "{title}")
-            //            .Return<Node<Movie>>("movie");
-            //var r = movies.Results;
         }
     }
 }
