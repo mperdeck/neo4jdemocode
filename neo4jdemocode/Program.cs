@@ -21,7 +21,9 @@ namespace neo4j.factsheetcode
             ComplexQuery();
 
             CodeTeaser();
-            StartupShutdown();
+
+            // don't do startup/shutdown
+
             UsingTransactions();
             CypherStatementWithParameters();
         }
@@ -172,20 +174,6 @@ client.Delete(actor, DeleteMode.NodeAndRelationships);
         public static void CodeTeaser()
         {
             //TODO:
-        }
-
-        private static void StartupShutdown()
-        {
-            return;
-
-            // wiki up to date
-
-// Create connection with server
-var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
-client.Connect();
-
-// Shut down the server
-client.ShutdownServer();
         }
 
         private static void UsingTransactions()
