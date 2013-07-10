@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Neo4jClient;
+using Neo4jClient.Cypher;
 
 namespace neo4j.factsheetcode
 {
@@ -13,6 +14,16 @@ namespace neo4j.factsheetcode
         {
             CreateActorPlayingInMovie();
             FindMovieByTitle();
+            IndexMovieByTitleAndUseIndexForSearch();
+            FindActorsAndRoles();
+            UpdatePropertiesOnActorAndRole();
+            DeleteActorAndRoles();
+            ComplexQuery();
+
+            CodeTeaser();
+            StartupShutdown();
+            UsingTransactions();
+            CypherStatementWithParameters();
         }
 
         public static void CreateActorPlayingInMovie()
@@ -21,6 +32,7 @@ namespace neo4j.factsheetcode
             client.Connect();
 
             var movie = client.Create(new Movie { Title = "The Matrix" });
+//########            var movie = client.Create(new Movie { Title = "The Matrix" }, new[] { new HasMovie2(client.RootNode) });
 
             // Create actor and its relationship with the movie in one go, so there is only one access to the database
             var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
@@ -81,6 +93,26 @@ namespace neo4j.factsheetcode
             }
         }
 
+
+
+
+        // Reverse HasMovie relationship
+
+        //public class HasMovie2 : Relationship, IRelationshipAllowingSourceNode<Movie>, IRelationshipAllowingTargetNode<RootNode>
+        //{
+        //    public HasMovie2(NodeReference<RootNode> targetNode)
+        //        : base(targetNode)
+        //    {
+        //    }
+
+        //    public const string TypeKey = "HAS_MOVIE";
+
+        //    public override string RelationshipTypeKey
+        //    {
+        //        get { return TypeKey; }
+        //    }
+        //}
+
         public static void FindMovieByTitle()
         {
             var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
@@ -93,6 +125,89 @@ namespace neo4j.factsheetcode
                         .Where((Movie movie) => movie.Title == "The Matrix")
                         .Return<Node<Movie>>("movie")
                         .Results;
+        }
+
+        public static void IndexMovieByTitleAndUseIndexForSearch()
+        {
+            //TODO: ???????????? how to create an index on an existing set. How to access it?
+
+            //var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
+            //client.Connect();
+
+            //var bookRef = client.Create(book,
+            //                new[] { new HasBook(client.RootNode) },
+            //                new[] { new IndexEntry("books") { { "title", "p. stone" } } });
+
+
+
+            //// Query Index
+
+
+            //var userNode = client.Cypher
+            //                .Start(new
+            //                {
+            //                    user = Node.ByIndexLookup(IndexNames.UsersKey, UserIndexKeys.Id, id)
+            //                })
+            //                .Return<Node<UserGraph>>("user")
+            //                .Results.FirstOrDefault();
+
+        }
+
+        public static void FindActorsAndRoles()
+        {
+            //TODO
+        }
+
+        public static void UpdatePropertiesOnActorAndRole()
+        {
+            var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
+            client.Connect();
+
+            // Set up for example
+            var movie = client.Create(new Movie { Title = "The Matrix" });
+            var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
+
+            // Example itself
+            client.Update(actor, node => { node.Name = "Hugo Weaving"; });
+            client.Update(movie, node => { node.Title = "The Matrix Reloaded"; });
+        }
+
+        public static void DeleteActorAndRoles()
+        {
+            var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
+            client.Connect();
+
+            // Set up for example
+            var movie = client.Create(new Movie { Title = "The Matrix" });
+            var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
+
+            // Example itself
+            client.Delete(actor, DeleteMode.NodeAndRelationships);
+        }
+
+        public static void ComplexQuery()
+        {
+            //TODO:
+        }
+
+        public static void CodeTeaser()
+        {
+            //TODO:
+        }
+
+        private static void StartupShutdown()
+        {
+            //TODO:
+        }
+
+        private static void UsingTransactions()
+        {
+            //TODO:
+        }
+
+        public static void CypherStatementWithParameters()
+        {
+            //TODO:
         }
     }
 }
