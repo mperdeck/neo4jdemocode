@@ -31,70 +31,46 @@ namespace neo4j.factsheetcode
             var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
             client.Connect();
 
-            var movie = client.Create(new Movie { Title = "The Matrix" });
 //########            var movie = client.Create(new Movie { Title = "The Matrix" }, new[] { new HasMovie2(client.RootNode) });
+            client.ShutdownServer();
+// wiki up to date
 
-            // Create actor and its relationship with the movie in one go, so there is only one access to the database
-            var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
 
-            // Also add relationship to root node, so we can find movies without going through other nodes
+var movie = client.Create(new Movie { Title = "The Matrix" });
+
+// Create actor and its relationship with the movie in one go, so there is only one access to the database
+var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
+
+// Also add relationship to root node, so we can find movies without going through other nodes
+client.CreateRelationship(client.RootNode, new HasMovie(movie));
+
             //TODO: this is inefficient (another call to the db). But I can't add this to the create (movie doesn't yet exist when I call client.Create)
             //TODO: understand this gets created automatically, but that didn't work for me. Confused.
-            client.CreateRelationship(client.RootNode, new HasMovie(movie));
         }
 
-        public class Movie
-        {
-            public string Title { get; set; }
-        }
+public class Movie
+{
+    public string Title { get; set; }
+}
 
-        public class Actor
-        {
-            public string Name { get; set; }
-        }
+public class Actor
+{
+    public string Name { get; set; }
+}
 
-        /// <summary>
-        /// Describes an ACTED_IN relationsip, which can only be from an Actor object to a Movie object.
-        /// It has one property, Role.
-        /// </summary>
-        public class ActedIn : Relationship, IRelationshipAllowingSourceNode<Actor>, IRelationshipAllowingTargetNode<Movie>
-        {
-            public string Role { get; set; }
+public class ActedIn : Relationship, IRelationshipAllowingSourceNode<Actor>, IRelationshipAllowingTargetNode<Movie>
+{
+    public string Role { get; set; }
 
-            public ActedIn(NodeReference<Movie> targetNode)
-                : base(targetNode)
-            {
-            }
+    public ActedIn(NodeReference<Movie> targetNode): base(targetNode) {}
+    public override string RelationshipTypeKey { get { return "ACTED_IN"; } }
+}
 
-            public const string TypeKey = "ACTED_IN";
-
-            public override string RelationshipTypeKey
-            {
-                get { return TypeKey; }
-            }
-        }
-
-        /// <summary>
-        /// Relationship between the root node and any other node.
-        /// Used to keep track of all nodes.
-        /// </summary>
-        public class HasMovie : Relationship, IRelationshipAllowingSourceNode<RootNode>, IRelationshipAllowingTargetNode<Movie>
-        {
-            public HasMovie(NodeReference<Movie> targetNode)
-                : base(targetNode)
-            {
-            }
-
-            public const string TypeKey = "HAS_MOVIE";
-
-            public override string RelationshipTypeKey
-            {
-                get { return TypeKey; }
-            }
-        }
-
-
-
+public class HasMovie : Relationship, IRelationshipAllowingSourceNode<RootNode>, IRelationshipAllowingTargetNode<Movie>
+{
+    public HasMovie(NodeReference<Movie> targetNode): base(targetNode) {}
+    public override string RelationshipTypeKey { get { return "HAS_MOVIE"; } }
+}
 
         // Reverse HasMovie relationship
 
@@ -118,13 +94,14 @@ namespace neo4j.factsheetcode
             var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
             client.Connect();
 
-            var movies = client
-                        .Cypher
-                        .Start(new { root = client.RootNode })
-                        .Match("root-[:HAS_MOVIE]->movie")
-                        .Where((Movie movie) => movie.Title == "The Matrix")
-                        .Return<Node<Movie>>("movie")
-                        .Results;
+            // wiki up to date
+var movies = client
+            .Cypher
+            .Start(new { root = client.RootNode })
+            .Match("root-[:HAS_MOVIE]->movie")
+            .Where((Movie movie) => movie.Title == "The Matrix")
+            .Return<Node<Movie>>("movie")
+            .Results;
         }
 
         public static void IndexMovieByTitleAndUseIndexForSearch()
@@ -167,9 +144,10 @@ namespace neo4j.factsheetcode
             var movie = client.Create(new Movie { Title = "The Matrix" });
             var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
 
+            // wiki up to date
             // Example itself
-            client.Update(actor, node => { node.Name = "Hugo Weaving"; });
-            client.Update(movie, node => { node.Title = "The Matrix Reloaded"; });
+client.Update(actor, node => { node.Name = "Hugo Weaving"; });
+client.Update(movie, node => { node.Title = "The Matrix Reloaded"; });
         }
 
         public static void DeleteActorAndRoles()
@@ -181,8 +159,9 @@ namespace neo4j.factsheetcode
             var movie = client.Create(new Movie { Title = "The Matrix" });
             var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
 
+            // wiki up to date
             // Example itself
-            client.Delete(actor, DeleteMode.NodeAndRelationships);
+client.Delete(actor, DeleteMode.NodeAndRelationships);
         }
 
         public static void ComplexQuery()
@@ -197,7 +176,16 @@ namespace neo4j.factsheetcode
 
         private static void StartupShutdown()
         {
-            //TODO:
+            return;
+
+            // wiki up to date
+
+// Create connection with server
+var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
+client.Connect();
+
+// Shut down the server
+client.ShutdownServer();
         }
 
         private static void UsingTransactions()
