@@ -34,17 +34,17 @@ namespace neo4j.factsheetcode
             client.Connect();
 
 //########            var movie = client.Create(new Movie { Title = "The Matrix" }, new[] { new HasMovie2(client.RootNode) });
-            client.ShutdownServer();
 // wiki up to date
 
 
-var movie = client.Create(new Movie { Title = "The Matrix" });
+//######### var movie = client.Create(new Movie { Title = "The Matrix" });
+            var movie = client.Create(new Movie { Title = "The Matrix" }, new HasMovie(client.RootNode));
 
 // Create actor and its relationship with the movie in one go, so there is only one access to the database
 var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
 
 // Also add relationship to root node, so we can find movies without going through other nodes
-client.CreateRelationship(client.RootNode, new HasMovie(movie));
+//######### client.CreateRelationship(client.RootNode, new HasMovie(movie));
 
             //TODO: this is inefficient (another call to the db). But I can't add this to the create (movie doesn't yet exist when I call client.Create)
             //TODO: understand this gets created automatically, but that didn't work for me. Confused.
@@ -68,9 +68,12 @@ public class ActedIn : Relationship, IRelationshipAllowingSourceNode<Actor>, IRe
     public override string RelationshipTypeKey { get { return "ACTED_IN"; } }
 }
 
+
+
 public class HasMovie : Relationship, IRelationshipAllowingSourceNode<RootNode>, IRelationshipAllowingTargetNode<Movie>
 {
     public HasMovie(NodeReference<Movie> targetNode): base(targetNode) {}
+    public HasMovie(NodeReference<RootNode> rootNode) : base(rootNode) { } 
     public override string RelationshipTypeKey { get { return "HAS_MOVIE"; } }
 }
 
@@ -134,7 +137,26 @@ var movies = client
 
         public static void FindActorsAndRoles()
         {
-            //TODO
+            var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
+            client.Connect();
+
+            // Set up for example
+            var movie = client.Create(new Movie { Title = "The Matrix" });
+            client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
+            client.Create(new Actor { Name = "Hugo Weaving" }, new ActedIn(movie) { Role = "Agent Smith" });
+
+            var actorsAndRoles = client
+                .Cypher
+                .Start(new { movie = movie })
+                .Match("actor-[r:ACTED_IN]->movie")
+                .Return((actor, r) => new {
+                    Actor = actor.As<Node<Actor>>(),
+                    Role = r.As<ActedIn>().Role
+                });
+
+
+            var res = actorsAndRoles
+                .Results;
         }
 
         public static void UpdatePropertiesOnActorAndRole()
