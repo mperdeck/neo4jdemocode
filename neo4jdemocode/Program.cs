@@ -20,11 +20,11 @@ namespace neo4j.factsheetcode
     {
         static void Main(string[] args)
         {
+            IndexMovieByTitleAndUseIndexForSearch();
             ComplexQuery();
             FindActorsAndRoles();
             CreateActorPlayingInMovie();
             FindMovieByTitle();
-            IndexMovieByTitleAndUseIndexForSearch();
             UpdatePropertiesOnActorAndRole();
             DeleteActorAndRoles();
 
@@ -103,28 +103,33 @@ var movies = client
 
         public static void IndexMovieByTitleAndUseIndexForSearch()
         {
-            //TODO: ???????????? how to create an index on an existing set. How to access it?
+            //#####var movie = client.Create(new Movie { Title = "The Matrix" }, new HasMovie(client.RootNode));
 
-            //var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
-            //client.Connect();
+var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
+client.Connect();
 
-            //var bookRef = client.Create(book,
-            //                new[] { new HasBook(client.RootNode) },
-            //                new[] { new IndexEntry("books") { { "title", "p. stone" } } });
+// index a movie by title
 
+var theMatrix = new Movie { Title = "The Matrix" };
 
+client.Create(
+    theMatrix,
+    new IRelationshipAllowingParticipantNode<Movie>[0],
+    new[]
+    {
+        new IndexEntry("Movie")
+        {
+            { "Title", theMatrix.Title }
+        }
+    });
 
-            //// Query Index
+//  use the index for search
 
-
-            //var userNode = client.Cypher
-            //                .Start(new
-            //                {
-            //                    user = Node.ByIndexLookup(IndexNames.UsersKey, UserIndexKeys.Id, id)
-            //                })
-            //                .Return<Node<UserGraph>>("user")
-            //                .Results.FirstOrDefault();
-
+IEnumerable<Node<Movie>> movies = client
+                                  .Cypher
+                                  .Start(new { movie = Node.ByIndexLookup("Movie", "Title", "The Matrix" )})
+                                  .Return<Node<Movie>>("movie")
+                                  .Results;
         }
 
         public static void FindActorsAndRoles()
