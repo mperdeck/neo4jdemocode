@@ -5,6 +5,14 @@ using System.Text;
 using System.Threading.Tasks;
 using Neo4jClient;
 using Neo4jClient.Cypher;
+using Neo4jClient.Cypher;
+using Neo4jClient.ApiModels.Cypher;
+using Neo4jClient.Mappers;
+using Neo4jClient.Serialization;
+using Neo4jClient;
+using Neo4jClient;
+using Neo4jClient;
+using Neo4jClient;
 
 namespace neo4j.factsheetcode
 {
@@ -12,10 +20,10 @@ namespace neo4j.factsheetcode
     {
         static void Main(string[] args)
         {
+            FindActorsAndRoles();
             CreateActorPlayingInMovie();
             FindMovieByTitle();
             IndexMovieByTitleAndUseIndexForSearch();
-            FindActorsAndRoles();
             UpdatePropertiesOnActorAndRole();
             DeleteActorAndRoles();
             ComplexQuery();
@@ -23,8 +31,7 @@ namespace neo4j.factsheetcode
             CodeTeaser();
 
             // don't do startup/shutdown
-
-            UsingTransactions();
+            // transactions don't apply here
             CypherStatementWithParameters();
         }
 
@@ -33,22 +40,20 @@ namespace neo4j.factsheetcode
             var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
             client.Connect();
 
-//########            var movie = client.Create(new Movie { Title = "The Matrix" }, new[] { new HasMovie2(client.RootNode) });
 // wiki up to date
 
 
-//######### var movie = client.Create(new Movie { Title = "The Matrix" });
-            var movie = client.Create(new Movie { Title = "The Matrix" }, new HasMovie(client.RootNode));
+// Create relationship with root node, so we can access the movie.
+// Create movie and relationship in one go, so there is only one access to the database
+var movie = client.Create(new Movie { Title = "The Matrix" }, new HasMovie(client.RootNode));
 
-// Create actor and its relationship with the movie in one go, so there is only one access to the database
-var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
+var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie, new ActedInProperties { Role = "Neo" }));
 
-// Also add relationship to root node, so we can find movies without going through other nodes
-//######### client.CreateRelationship(client.RootNode, new HasMovie(movie));
-
-            //TODO: this is inefficient (another call to the db). But I can't add this to the create (movie doesn't yet exist when I call client.Create)
-            //TODO: understand this gets created automatically, but that didn't work for me. Confused.
         }
+
+
+// ---------------
+// Declarations
 
 public class Movie
 {
@@ -62,13 +67,14 @@ public class Actor
 
 public class ActedIn : Relationship, IRelationshipAllowingSourceNode<Actor>, IRelationshipAllowingTargetNode<Movie>
 {
-    public string Role { get; set; }
-
-    public ActedIn(NodeReference<Movie> targetNode): base(targetNode) {}
+    public ActedIn(NodeReference<Movie> targetNode, ActedInProperties actedInProperties) : base(targetNode, actedInProperties) { }
     public override string RelationshipTypeKey { get { return "ACTED_IN"; } }
 }
 
-
+public class ActedInProperties
+{
+    public string Role { get; set; }
+}
 
 public class HasMovie : Relationship, IRelationshipAllowingSourceNode<RootNode>, IRelationshipAllowingTargetNode<Movie>
 {
@@ -77,22 +83,8 @@ public class HasMovie : Relationship, IRelationshipAllowingSourceNode<RootNode>,
     public override string RelationshipTypeKey { get { return "HAS_MOVIE"; } }
 }
 
-        // Reverse HasMovie relationship
 
-        //public class HasMovie2 : Relationship, IRelationshipAllowingSourceNode<Movie>, IRelationshipAllowingTargetNode<RootNode>
-        //{
-        //    public HasMovie2(NodeReference<RootNode> targetNode)
-        //        : base(targetNode)
-        //    {
-        //    }
-
-        //    public const string TypeKey = "HAS_MOVIE";
-
-        //    public override string RelationshipTypeKey
-        //    {
-        //        get { return TypeKey; }
-        //    }
-        //}
+        // ---------------------------------------------------------------------
 
         public static void FindMovieByTitle()
         {
@@ -137,26 +129,36 @@ var movies = client
 
         public static void FindActorsAndRoles()
         {
-            var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
-            client.Connect();
+var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
+client.Connect();
 
-            // Set up for example
-            var movie = client.Create(new Movie { Title = "The Matrix" });
-            client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
-            client.Create(new Actor { Name = "Hugo Weaving" }, new ActedIn(movie) { Role = "Agent Smith" });
+// Set up for example
+    var movie = client.Create(new Movie { Title = "The Matrix" });
 
-            var actorsAndRoles = client
-                .Cypher
-                .Start(new { movie = movie })
-                .Match("actor-[r:ACTED_IN]->movie")
-                .Return((actor, r) => new {
-                    Actor = actor.As<Node<Actor>>(),
-                    Role = r.As<ActedIn>().Role
-                });
+    client.Create(new Actor { Name = "Keanu Reeves" },
+        new ActedIn(movie, new ActedInProperties { Role = "Neo" }));
+
+    client.Create(new Actor { Name = "Hugo Weaving" },
+        new ActedIn(movie, new ActedInProperties { Role = "Agent Smith" }));
+
+    var actorsAndRoles = client
+        .Cypher
+        .Start(new { movie = movie })
+        .Match("actor-[r:ACTED_IN]->movie")
+        .Return((actor, r) => new
+        {
+            Actor = actor.As<Node<Actor>>() /*,
+            Role = r */
+        })
+        .Results;
 
 
-            var res = actorsAndRoles
-                .Results;
+//#####                    Role = r.As<Relationship<ActedIn>>()
+
+            //var res = actorsAndRoles
+            //    .Results;
+
+
         }
 
         public static void UpdatePropertiesOnActorAndRole()
@@ -166,7 +168,7 @@ var movies = client
 
             // Set up for example
             var movie = client.Create(new Movie { Title = "The Matrix" });
-            var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
+            var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie, new ActedInProperties { Role = "Neo" }));
 
             // wiki up to date
             // Example itself
@@ -181,24 +183,40 @@ client.Update(movie, node => { node.Title = "The Matrix Reloaded"; });
 
             // Set up for example
             var movie = client.Create(new Movie { Title = "The Matrix" });
-            var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie) { Role = "Neo" });
+            var actor = client.Create(new Actor { Name = "Keanu Reeves" }, new ActedIn(movie, new ActedInProperties { Role = "Neo" }));
 
             // wiki up to date
             // Example itself
 client.Delete(actor, DeleteMode.NodeAndRelationships);
         }
 
+
+        // --------------------------------
+
         public static void ComplexQuery()
         {
-            //TODO:
+            var client = new GraphClient(new Uri("http://localhost:7474/db/data"));
+            client.Connect();
+
+            // set up data for sample
+
+            var movie = client.Create(new Movie { Title = "The Matrix" });
+
+            client.Create(new Actor { Name = "Keanu Reeves" },
+                new ActedIn(movie, new ActedInProperties { Role = "Neo" }));
+
+            client.Create(new Actor { Name = "Hugo Weaving" },
+                new ActedIn(movie, new ActedInProperties { Role = "Agent Smith" }));
+
+            // Sample itself
+
+
+
+
+
         }
 
         public static void CodeTeaser()
-        {
-            //TODO:
-        }
-
-        private static void UsingTransactions()
         {
             //TODO:
         }
