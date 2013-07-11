@@ -20,13 +20,13 @@ namespace neo4j.factsheetcode
     {
         static void Main(string[] args)
         {
+            ComplexQuery();
             FindActorsAndRoles();
             CreateActorPlayingInMovie();
             FindMovieByTitle();
             IndexMovieByTitleAndUseIndexForSearch();
             UpdatePropertiesOnActorAndRole();
             DeleteActorAndRoles();
-            ComplexQuery();
 
             CodeTeaser();
 
@@ -200,20 +200,48 @@ client.Delete(actor, DeleteMode.NodeAndRelationships);
 
             // set up data for sample
 
-            var movie = client.Create(new Movie { Title = "The Matrix" });
+            var theMatrix = client.Create(new Movie { Title = "The Matrix" });
+            var anotherMovie = client.Create(new Movie { Title = "Another movie" });
+            var anotherMovie2 = client.Create(new Movie { Title = "Another movie2" });
 
-            client.Create(new Actor { Name = "Keanu Reeves" },
-                new ActedIn(movie, new ActedInProperties { Role = "Neo" }));
+            // ------
 
-            client.Create(new Actor { Name = "Hugo Weaving" },
-                new ActedIn(movie, new ActedInProperties { Role = "Agent Smith" }));
+            var keanoReeves = client.Create(new Actor { Name = "Keanu Reeves" },
+                new ActedIn(theMatrix, new ActedInProperties { Role = "Neo" }));
 
+            client.CreateRelationship(keanoReeves, new ActedIn(anotherMovie, new ActedInProperties { Role = "Super Hero" }));
+            client.CreateRelationship(keanoReeves, new ActedIn(anotherMovie2, new ActedInProperties { Role = "Super Hero2" }));
+
+
+            // ----
+
+            var hugoWeaving = client.Create(new Actor { Name = "Hugo Weaving" },
+                new ActedIn(theMatrix, new ActedInProperties { Role = "Agent Smith" }));
+
+            var hugoWeaving2 = client.Create(new Actor { Name = "Hugo Weaving2" },
+                new ActedIn(theMatrix, new ActedInProperties { Role = "Agent Smith2" }));
+
+            var anotherActor = client.Create(new Actor { Name = "Another Actor" },
+                new ActedIn(anotherMovie, new ActedInProperties { Role = "Another Role" }));
+
+            // --------------------------
             // Sample itself
 
+// Find all movies that Keano Reeves played in, and his co-actors in each movie
+// Cypher pattern:
+// keanoReeves-[:ACTED_IN]->movie<-[?:ACTED_IN]-coActor
 
-
-
-
+var moviesAndCoactors = client
+    .Cypher
+    .Start(new { keanoReeves = keanoReeves })
+    .Match("keanoReeves-[:ACTED_IN]->movie<-[?:ACTED_IN]-coActor")
+    .Where((Actor coActor) => coActor.Name != "Keanu Reeves")
+    .Return((movie, coActor) => new
+    {
+        Movie = movie.As<Node<Movie>>(),
+        CoActor = coActor.As<Node<Actor>>()
+    })
+    .Results;
         }
 
         public static void CodeTeaser()
